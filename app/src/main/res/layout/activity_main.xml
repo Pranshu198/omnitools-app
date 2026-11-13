@@ -31,7 +31,7 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="8dp"
             android:gravity="center"
-            android:text="Check your internet connection, then tap Retry."
+            android:text="The app is built into this APK and works offline, so this should not happen. Tap Retry."
             android:textColor="@color/fg_dim"
             android:textSize="14sp" />
         <Button
@@ -40,5 +40,11 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="18dp"
             android:text="Retry" />
+        <Button
+            android:id="@+id/webBtn"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:text="Open website" />
     </LinearLayout>
 </FrameLayout>

@@ -14,3 +14,7 @@
 -keep class com.jackbhai.omnitools.PlaybackService { *; }
 -keep class com.jackbhai.omnitools.R { *; }
 -keep class com.jackbhai.omnitools.R$* { *; }
+-keep class com.jackbhai.omnitools.UpdateCheck { *; }
+# androidx.webkit references annotation types that are compile-time only.
+-dontwarn androidx.annotation.**
+-dontwarn org.chromium.support_lib_boundary.**

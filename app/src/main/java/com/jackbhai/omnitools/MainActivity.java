@@ -23,18 +23,33 @@ import android.webkit.WebChromeClient;
 import android.webkit.WebResourceError;
 import android.webkit.WebResourceRequest;
 import android.webkit.WebSettings;
+import android.webkit.ServiceWorkerClient;
+import android.webkit.ServiceWorkerController;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
 import android.widget.Toast;
+
+import androidx.webkit.WebViewAssetLoader;
 
 import java.util.ArrayList;
 import java.util.List;
 
 /**
- * The app shell: a full-screen WebView running the OmniTools PWA, with
+ * The app shell: a full-screen WebView running the OmniTools app, with
  * the native pieces a browser tab cannot give it — the OmniApp JS
  * bridge, blob-download saving, camera/file uploads, media permissions,
  * deep links, external-link intents and widget command dispatch.
+ *
+ * v2 is STANDALONE: the entire PWA build is bundled in the APK's assets
+ * and served locally by WebViewAssetLoader under the fixed https origin
+ * https://appassets.androidplatform.net — the app never loads the live
+ * website. (The stable https origin is what lets the SPA router, lazy
+ * chunks, data-shard fetches, IndexedDB/localStorage and the service
+ * worker behave exactly as they do on the web.) Live features (music,
+ * TV, radio, weather, TTS…) call their APIs directly, as they always
+ * did — they never depended on our website's origin. If a bundled
+ * asset is ever missing, shouldInterceptRequest returns a 404 and the
+ * error overlay shows: there is NO silent fallback to the website.
  *
  * The WebView is deliberately NOT paused with the activity: background
  * audio (music / radio) must keep playing when the user switches apps,
@@ -43,7 +58,11 @@ import java.util.List;
 public class MainActivity extends Activity {
     static final String EXTRA_ROUTE = "route";   // in-app hash, e.g. "tv"
     static final String EXTRA_CMD = "cmd";       // queued music command
-    private static final String BASE = "https://jackbhai.github.io/omnitools/";
+    /** Local origin the bundled site is served from (never a real server). */
+    private static final String BASE = "https://appassets.androidplatform.net/";
+    private static final String HOME = BASE + "index.html";
+    /** The live website — only ever opened in the browser, on request. */
+    private static final String WEBSITE = "https://jackbhai.github.io/omnitools/";
     private static final int REQ_FILE = 1001;
     private static final int REQ_PERM = 1002;
 
@@ -55,6 +74,7 @@ public class MainActivity extends Activity {
     private ValueCallback<Uri[]> fileCallback;
     private Uri cameraUri;
     private PermissionRequest pendingPermReq;
+    private WebViewAssetLoader assetLoader;
 
     // ------------------------------------------------------------ bridge out
 
@@ -84,17 +104,58 @@ public class MainActivity extends Activity {
         setContentView(R.layout.activity_main);
         instance = this;
 
+        // Serve the bundled PWA from assets/ under the local https origin.
+        assetLoader = new WebViewAssetLoader.Builder()
+                .setDomain("appassets.androidplatform.net")
+                .addPathHandler("/", new WebViewAssetLoader.AssetsPathHandler(this))
+                .build();
+
         web = findViewById(R.id.webview);
         setupWebView(web);
 
         String route = routeFromIntent(getIntent());
         pendingCmd = getIntent() != null ? getIntent().getStringExtra(EXTRA_CMD) : null;
-        web.loadUrl(route != null ? BASE + "#" + route : BASE);
+        web.loadUrl(route != null ? HOME + "#" + route : HOME);
 
         findViewById(R.id.retryBtn).setOnClickListener(v -> {
             findViewById(R.id.errorBox).setVisibility(View.GONE);
             if (web != null) web.reload();
         });
+        findViewById(R.id.webBtn).setOnClickListener(v -> openWebsite());
+
+        UpdateCheck.maybeCheck(this);   // throttled to once a day, silent offline
+    }
+
+    private void openWebsite() {
+        try {
+            Intent i = new Intent(Intent.ACTION_VIEW, Uri.parse(WEBSITE));
+            i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            startActivity(i);
+        } catch (Exception ignored) {
+        }
+    }
+
+    @Override
+    public boolean onCreateOptionsMenu(android.view.Menu menu) {
+        menu.add(0, 1, 0, "Check for updates");
+        menu.add(0, 2, 0, "Open website");
+        return true;
+    }
+
+    @Override
+    public boolean onOptionsItemSelected(android.view.MenuItem item) {
+        if (item.getItemId() == 1) {
+            getSharedPreferences("omni_update", MODE_PRIVATE)
+                    .edit().remove("last_check_ms").apply();   // force a fresh check
+            UpdateCheck.maybeCheck(this);
+            Toast.makeText(this, "Checking for updates…", Toast.LENGTH_SHORT).show();
+            return true;
+        }
+        if (item.getItemId() == 2) {
+            openWebsite();
+            return true;
+        }
+        return super.onOptionsItemSelected(item);
     }
 
     @Override
@@ -109,7 +170,7 @@ public class MainActivity extends Activity {
                     "window.location.hash=" + jsString("#" + route), null);
             applyPendingCmdSoon();
         } else if (route != null && web != null) {
-            web.loadUrl(BASE + "#" + route);
+            web.loadUrl(HOME + "#" + route);
         } else {
             applyPendingCmdSoon();
         }
@@ -156,8 +217,26 @@ public class MainActivity extends Activity {
         s.setMixedContentMode(WebSettings.MIXED_CONTENT_COMPATIBILITY_MODE);
         s.setAllowFileAccess(false);
         s.setAllowContentAccess(true);
-        s.setUserAgentString(s.getUserAgentString() + " OmniToolsApp/1.0");
+        s.setUserAgentString(s.getUserAgentString() + " OmniToolsApp/2.0");
         CookieManager.getInstance().setAcceptThirdPartyCookies(wv, true);
+
+        // The service worker fetches through its own client, not the
+        // WebViewClient — route ITS app-origin requests to the bundle
+        // too, or a registered SW would try the real network for
+        // appassets URLs and fail. Non-app URLs pass through (null).
+        try {
+            ServiceWorkerController.getInstance().setServiceWorkerClient(
+                    new ServiceWorkerClient() {
+                        @Override
+                        public android.webkit.WebResourceResponse shouldInterceptRequest(
+                                WebResourceRequest request) {
+                            return serveLocal(request.getUrl());
+                        }
+                    });
+        } catch (Exception ignored) {
+            // No SW support in this WebView build: the bundle still
+            // serves every page request directly, SW is an accelerator.
+        }
 
         wv.addJavascriptInterface(new JsBridge(this), "OmniApp");
         wv.setWebViewClient(new ShellClient());
@@ -184,7 +263,31 @@ public class MainActivity extends Activity {
         }
     };
 
+    /**
+     * Serves a bundled asset for app-origin URLs; null for everything
+     * else (the WebView then does its normal network fetch — used only
+     * by the app's own API calls to outside services, never for pages).
+     * A missing asset yields the loader's 404 response, NOT a redirect
+     * to the website: the error overlay is the honest failure mode.
+     */
+    private android.webkit.WebResourceResponse serveLocal(Uri uri) {
+        if (uri == null || assetLoader == null) return null;
+        if (!"appassets.androidplatform.net".equals(uri.getHost())) return null;
+        try {
+            return assetLoader.shouldInterceptRequest(uri);
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
     private class ShellClient extends WebViewClient {
+        @Override
+        public android.webkit.WebResourceResponse shouldInterceptRequest(
+                WebView view, WebResourceRequest request) {
+            android.webkit.WebResourceResponse local = serveLocal(request.getUrl());
+            return local != null ? local : super.shouldInterceptRequest(view, request);
+        }
+
         @Override
         public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
             return handleUrl(request.getUrl());
@@ -236,8 +339,10 @@ public class MainActivity extends Activity {
                 return true;
             case "http": case "https": {
                 String host = uri.getHost();
-                if (host != null && host.endsWith("jackbhai.github.io")) return false;
-                // Everything else leaves the app shell (source links, shares).
+                // The app's own bundled pages stay in the WebView…
+                if (host != null && host.equals("appassets.androidplatform.net")) return false;
+                // …every real web link (including the OmniTools website)
+                // leaves the shell and opens in the browser.
                 try {
                     Intent i = new Intent(Intent.ACTION_VIEW, uri);
                     i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);

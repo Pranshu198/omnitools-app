@@ -18,3 +18,8 @@ keystore.properties
 *.iml
 .DS_Store
 *.idsig
+
+# The bundled PWA (v2 standalone): ~158 MB of generated site files copied
+# from the omnitools repo's dist/ by build-manual.sh at build time.
+# It ships inside the release APK, not in git.
+app/src/main/assets/
