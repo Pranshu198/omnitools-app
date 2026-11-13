@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">OmniTools</string>
+    <string name="widget_music">OmniTools Music</string>
+    <string name="widget_music_desc">Now playing with play / pause / next controls</string>
+    <string name="widget_daily">OmniTools Daily</string>
+    <string name="widget_daily_desc">Verse of the Day and today\'s Panchang</string>
+    <string name="widget_quick">OmniTools Quick Tools</string>
+    <string name="widget_quick_desc">One-tap shortcuts: TV, Downloader, Radio, Games, Trains</string>
+    <string name="notif_channel">Playback</string>
+    <string name="open_app_to_play">Open OmniTools to start listening</string>
+</resources>

@@ -1,0 +1,20 @@
+# Build output
+.gradle/
+build/
+app/build/
+local.properties
+*.apk
+*.aab
+
+# Signing — NEVER commit the keystore or its passwords.
+# Losing the keystore means future updates cannot overwrite-install.
+keystore/
+keystore.properties
+*.jks
+*.keystore
+
+# IDE / OS
+.idea/
+*.iml
+.DS_Store
+*.idsig

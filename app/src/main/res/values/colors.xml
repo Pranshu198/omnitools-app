@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="bg">#FF000000</color>
+    <color name="surface">#FF0E1412</color>
+    <color name="surface2">#FF141C19</color>
+    <color name="line">#FF26332F</color>
+    <color name="fg">#FFE8FFF4</color>
+    <color name="fg_dim">#FF9DB5AC</color>
+    <color name="green">#FF00FF9C</color>
+    <color name="cyan">#FF00E5FF</color>
+</resources>

@@ -1,0 +1,55 @@
+plugins {
+    id 'com.android.application'
+}
+
+// Signing credentials live OUTSIDE git (keystore.properties is gitignored).
+def ksProps = new Properties()
+def ksFile = rootProject.file('keystore.properties')
+if (ksFile.exists()) {
+    ksProps.load(new FileInputStream(ksFile))
+}
+
+android {
+    namespace 'com.jackbhai.omnitools'
+    compileSdk 34
+
+    defaultConfig {
+        applicationId 'com.jackbhai.omnitools'
+        minSdk 26
+        targetSdk 34
+        versionCode 1
+        versionName '1.0'
+    }
+
+    signingConfigs {
+        release {
+            if (ksFile.exists()) {
+                storeFile file(ksProps['storeFile'])
+                storePassword ksProps['storePassword']
+                keyAlias ksProps['keyAlias']
+                keyPassword ksProps['keyPassword']
+            }
+        }
+    }
+
+    buildTypes {
+        release {
+            // R8 on; proguard-rules.pro keeps the @JavascriptInterface
+            // bridge methods by name (verified against the dex after build).
+            minifyEnabled true
+            shrinkResources true
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+            if (ksFile.exists()) {
+                signingConfig signingConfigs.release
+            }
+        }
+        debug {
+            minifyEnabled false
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+}
