@@ -30,8 +30,8 @@ BT="$SDK/build-tools/34.0.0"
 ANDROID_JAR="$SDK/platforms/android-34/android.jar"
 export PATH="$JAVA_HOME/bin:$PATH"
 
-VERSION_CODE=3
-VERSION_NAME="2.0.1"
+VERSION_CODE=4
+VERSION_NAME="2.0.2"
 APK_NAME="OmniTools-${VERSION_NAME}.apk"
 
 # ---- bundle the PWA: the app is standalone, the site ships inside ----
