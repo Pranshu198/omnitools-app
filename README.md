@@ -3,7 +3,7 @@
 The native Android app for **OmniTools** (100+ free tools: music, live TV,
 downloader, bhakti library, trains, panchang and much more).
 
-**[⬇ Download the APK (v2.0 "Standalone")](https://github.com/Pranshu198/omnitools-app/releases/download/v2.0/OmniTools-2.0.apk)**
+**[⬇ Download the APK (v2.0.1)](https://github.com/Pranshu198/omnitools-app/releases/download/v2.0.1/OmniTools-2.0.1.apk)**
 — free, no Play Store needed. Or browse all builds on the
 [Releases page](https://github.com/Pranshu198/omnitools-app/releases).
 
@@ -96,7 +96,7 @@ tracking — the same promise as the website.
 Every release is signed with the same keystore. Verify any APK with:
 
 ```
-apksigner verify --print-certs OmniTools-2.0.apk
+apksigner verify --print-certs OmniTools-2.0.1.apk
 ```
 
 - Signer certificate SHA-256:
